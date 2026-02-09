@@ -1,4 +1,4 @@
-# RedMonk – App Network Transparency Tool
+# RedMonk – App Network Activity Report Generator
 
 ## About
 
