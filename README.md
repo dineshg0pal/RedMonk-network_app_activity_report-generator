@@ -2,18 +2,17 @@
 
 ## About
 
-RedMonk is an Android app that shows real-time network usage of apps and helps users understand which apps send and receive data.
+RedMonk is an Android app that shows network usage of apps and generates network-app activity report as PDF, and helps users understand which apps send and receive data.
 
 ## Features
 
-* Real-time app network monitoring
+* app network monitoring
 * Upload / Download data per app
 * Protocol display (TCP / UDP)
 * Time-based activity logging
+* generate network activity report as PDF
+* anomoly data detection with high/meduim/normal patterns
 
-## Installation
-
-Download APK from Releases section and install.
 
 ## Future Features
 
