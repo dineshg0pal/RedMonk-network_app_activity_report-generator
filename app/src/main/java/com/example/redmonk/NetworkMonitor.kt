@@ -1,12 +1,13 @@
 package com.example.redmonk
 
+import android.app.ActivityManager
 import android.app.usage.NetworkStats
 import android.app.usage.NetworkStatsManager
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.net.ConnectivityManager
 import android.os.Handler
 import android.os.Looper
-import java.util.*
 
 class NetworkMonitor(
     private val context: Context,
@@ -35,13 +36,36 @@ class NetworkMonitor(
     }
 
     private fun readUsage(): List<AppUsage> {
-        val list = mutableListOf<AppUsage>()
         val pm = context.packageManager
         val nsm =
             context.getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
+        val usm =
+            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
         val end = System.currentTimeMillis()
-        val start = end - (1000 * 60 * 60)
+
+        // 🔥 BIG WINDOW = apps will appear
+        val start = end - (24 * 60 * 60 * 1000)
+
+        // ===== LAST USED MAP =====
+        val usageStats = usm.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            start,
+            end
+        )
+
+        val lastUsedMap = mutableMapOf<String, Long>()
+        usageStats?.forEach {
+            lastUsedMap[it.packageName] = it.lastTimeUsed
+        }
+
+        // ===== FOREGROUND APP =====
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val runningApp = am.runningAppProcesses?.firstOrNull()?.processName
+
+        // ===== AGGREGATE TRAFFIC =====
+        data class Temp(val sent: Long, val received: Long)
+        val traffic = mutableMapOf<String, Temp>()
 
         fun read(type: Int) {
             try {
@@ -55,22 +79,20 @@ class NetworkMonitor(
                     if (uid <= 0) continue
 
                     val packages = pm.getPackagesForUid(uid) ?: continue
-                    val appInfo = pm.getApplicationInfo(packages[0], 0)
+                    val pkg = packages[0]
 
-                    list.add(
-                        AppUsage(
-                            appName = pm.getApplicationLabel(appInfo).toString(),
-                            icon = pm.getApplicationIcon(appInfo),
-                            sent = bucket.txBytes,
-                            received = bucket.rxBytes,
-                            protocol = "TCP/IP",
-                            time = System.currentTimeMillis()
+                    val old = traffic[pkg]
+                    if (old == null) {
+                        traffic[pkg] = Temp(bucket.txBytes, bucket.rxBytes)
+                    } else {
+                        traffic[pkg] = Temp(
+                            old.sent + bucket.txBytes,
+                            old.received + bucket.rxBytes
                         )
-                    )
+                    }
                 }
 
                 stats.close()
-
             } catch (_: Exception) {
             }
         }
@@ -78,7 +100,34 @@ class NetworkMonitor(
         read(ConnectivityManager.TYPE_WIFI)
         read(ConnectivityManager.TYPE_MOBILE)
 
-        return list
-    }
+        // ===== BUILD FINAL LIST =====
+        val result = mutableListOf<AppUsage>()
 
+        traffic.forEach { (packageName, t) ->
+            try {
+                val appInfo = pm.getApplicationInfo(packageName, 0)
+                val appName = pm.getApplicationLabel(appInfo).toString()
+
+                val isRunning = packageName == runningApp
+                val lastUsed = lastUsedMap[packageName] ?: 0L
+
+                result.add(
+                    AppUsage(
+                        appName = appName,
+                        icon = pm.getApplicationIcon(appInfo),
+                        sent = t.sent,
+                        received = t.received,
+                        protocol = "TCP/IP",
+                        time = System.currentTimeMillis(),
+                        isRunningNow = isRunning,
+                        lastUsedTime = lastUsed
+                    )
+                )
+            } catch (_: Exception) {
+            }
+        }
+
+        // biggest consumer on top
+        return result.sortedByDescending { it.sent + it.received }
+    }
 }

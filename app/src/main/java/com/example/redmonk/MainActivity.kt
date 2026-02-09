@@ -28,8 +28,24 @@ class MainActivity : AppCompatActivity() {
 
         // Network Monitor
         monitor = NetworkMonitor(this) { list ->
-            latestUsageList = list
-            adapter.update(list)
+
+            // 🔥 Analyze each app for anomaly / suspicious behaviour
+            val enriched = list.map { app ->
+                val result = RiskAnalyzer.analyze(this, app)
+                app.copy(
+                    riskLevel = result.level,
+                    riskReason = result.reason
+                )
+            }
+
+            // keep for report
+            latestUsageList = enriched
+
+            // save into behavioural history
+            UsageHistory.save(this, enriched)
+
+            // update UI
+            adapter.update(enriched)
         }
 
         // Start monitoring

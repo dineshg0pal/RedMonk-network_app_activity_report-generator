@@ -77,18 +77,36 @@ object PdfReportGenerator {
 
         y += 20
 
-        // ===== RISK ANALYSIS =====
-        canvas.drawText("Risk Assessment", 40f, y.toFloat(), titlePaint)
+        // ===== SMART RISK ANALYSIS (NEW) =====
+        canvas.drawText("Detected Anomalies & Suspicious Behaviour", 40f, y.toFloat(), titlePaint)
         y += 25
 
-        val risk = when {
-            totalReceived > 500 * 1024 * 1024 -> "HIGH – Heavy background data usage detected"
-            totalReceived > 100 * 1024 * 1024 -> "MEDIUM – Moderate data usage"
-            else -> "LOW – Normal network behavior"
+        val riskyApps = list.filter { it.riskLevel != "LOW" }
+
+        if (riskyApps.isEmpty()) {
+            canvas.drawText("No anomalies detected.", 40f, y.toFloat(), paint)
+            y += 20
+        } else {
+            for (app in riskyApps) {
+                canvas.drawText(
+                    "• ${app.appName} – ${app.riskLevel}",
+                    40f,
+                    y.toFloat(),
+                    paint
+                )
+                y += 16
+
+                canvas.drawText(
+                    app.riskReason,
+                    60f,
+                    y.toFloat(),
+                    paint
+                )
+                y += 18
+            }
         }
 
-        canvas.drawText("Risk Level: $risk", 40f, y.toFloat(), paint)
-        y += 30
+        y += 20
 
         // ===== FOOTER =====
         canvas.drawLine(40f, y.toFloat(), 555f, y.toFloat(), paint)
