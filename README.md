@@ -11,11 +11,10 @@ RedMonk is an Android app that shows network usage of apps and generates network
 * Protocol display (TCP / UDP)
 * Time-based activity logging
 * generate network activity report as PDF
-* anomoly data detection with high/meduim/normal patterns
+* it checks for anomoly patterns - basically a simple detector
 
+## PDF Generator
 
-## Future Features
-
-* Permission risk indicator
-* Data destination visualization
-* Suspicious traffic alerts
+* it generates pdf with a network activity
+* it has a report like strcture with day/date/year
+* simple user-friendly pdf to understand apps activity
